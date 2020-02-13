@@ -1,12 +1,15 @@
 ﻿#pragma once
 
 #include <memory>
+#include <iterator>
 
 template<typename T>
 class IIteratorConsumer {
 public:
     virtual bool IterateToFirst() = 0;
     virtual bool IterateToNext() = 0;
+    virtual bool IterateToLast() = 0;
+    virtual bool IterateToPrev() = 0;
     virtual T GetCurrent() const = 0;
 };
 
@@ -16,6 +19,12 @@ private:
     IIteratorConsumer<T>& Consumer;
     bool CanConsume = true;
 public:
+    using iterator_category = std::input_iterator_tag;
+    using value_type = T;
+    using pointer = T*;
+    using reference = T&;
+    using difference_type = std::ptrdiff_t;
+
     explicit Iterator(IIteratorConsumer<T>& consumer)
         : Consumer(consumer)
     {
@@ -81,6 +90,23 @@ private:
             return It != Cont.end();
         }
 
+        bool IterateToLast() override {
+            auto it = Cont.rbegin();
+            if (it == Cont.rend())
+                return false;
+
+            It = Cont.rbegin().base();
+            --It;
+            return true;
+        }
+
+        bool IterateToPrev() override {
+            if (It == Cont.begin())
+                return false;
+            --It;
+            return true;
+        }
+
         T GetCurrent() const override {
             return *It;
         }
@@ -141,6 +167,27 @@ private:
             return false;
         }
 
+        bool IterateToLast() override {
+            if (!Consumer.IterateToLast())
+                return false;
+            if (Predicate(Consumer.GetCurrent()))
+                return true;
+
+            while (Consumer.IterateToPrev()) {
+                if (Predicate(Consumer.GetCurrent()))
+                    return true;
+            }
+            return false;
+        }
+
+        bool IterateToPrev() override {
+            while (Consumer.IterateToPrev()) {
+                if (Predicate(Consumer.GetCurrent()))
+                    return true;
+            }
+            return false;
+        }
+
         T GetCurrent() const override {
             return Consumer.GetCurrent();
         }
@@ -150,6 +197,55 @@ private:
 public:
     FilteredCollection(CollectionPtr<T> parent, Pred pred)
         : Consumer(parent, pred)
+    {}
+
+    const IIteratorConsumer<T>& GetConsumer() const override {
+        return Consumer;
+    }
+
+    IIteratorConsumer<T>& GetConsumer() override {
+        return Consumer;
+    }
+};
+
+template<typename T>
+class ReversedCollection : public ICollection<T> {
+private:
+    class IteratorConsumer : public IIteratorConsumer<T> {
+    private:
+        CollectionPtr<T> Parent;
+        IIteratorConsumer<T>& Consumer;
+    public:
+        explicit IteratorConsumer(CollectionPtr<T> parent)
+            : Parent(parent)
+            , Consumer(Parent->GetConsumer())
+        {}
+
+        bool IterateToFirst() override {
+            return Consumer.IterateToLast();
+        }
+
+        bool IterateToNext() override {
+            return Consumer.IterateToPrev();
+        }
+
+        bool IterateToLast() override {
+            return Consumer.IterateToFirst();
+        }
+
+        bool IterateToPrev() override {
+            return Consumer.IterateToNext();
+        }
+
+        T GetCurrent() const override {
+            return Consumer.GetCurrent();
+        }
+    };
+
+    IteratorConsumer Consumer;
+public:
+    ReversedCollection(CollectionPtr<T> parent)
+        : Consumer(parent)
     {}
 
     const IIteratorConsumer<T>& GetConsumer() const override {
@@ -179,8 +275,17 @@ public:
     }
 
     template<typename Pred>
-    Collection<T> Filter(Pred pred) {
+    Collection<T> Filter(Pred pred) const {
         return Collection<T>(std::make_shared<FilteredCollection<T, Pred>>(Data, pred));
+    }
+
+    Collection<T> Reverse() const {
+        return Collection<T>(std::make_shared<ReversedCollection<T>>(Data));
+    }
+
+    template<typename OutContainer>
+    OutContainer To() const {
+        return OutContainer(begin(), end());
     }
 };
 
