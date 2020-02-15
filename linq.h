@@ -16,7 +16,7 @@ public:
 template<typename T>
 class Iterator {
 private:
-    IIteratorConsumer<T>& Consumer;
+    IIteratorConsumer<T>* Consumer;
     bool CanConsume = true;
 public:
     using iterator_category = std::input_iterator_tag;
@@ -25,28 +25,37 @@ public:
     using reference = T&;
     using difference_type = std::ptrdiff_t;
 
-    explicit Iterator(IIteratorConsumer<T>& consumer)
+    explicit Iterator(IIteratorConsumer<T>* consumer)
         : Consumer(consumer)
     {
-        if (!Consumer.IterateToFirst()) {
+        if (!Consumer->IterateToFirst()) {
             CanConsume = false;
         }
     }
 
-    Iterator(IIteratorConsumer<T>& consumer, int)
+    Iterator(IIteratorConsumer<T>* consumer, int)
         : Consumer(consumer)
         , CanConsume(false)
     {}
 
+    Iterator(const Iterator<T>&) = default;
+    Iterator& operator=(const Iterator<T>&) = default;
+
     Iterator<T>& operator++() {
-        if (!Consumer.IterateToNext()) {
+        if (!Consumer->IterateToNext()) {
             CanConsume = false;
         }
         return *this;
     }
 
+    Iterator<T> operator++(int) {
+        auto res = *this;
+        operator++();
+        return res;
+    }
+
     bool operator==(const Iterator<T>& other) const {
-        return &Consumer == &other.Consumer && CanConsume == other.CanConsume;
+        return Consumer == other.Consumer && CanConsume == other.CanConsume;
     }
 
     bool operator!=(const Iterator<T>& other) const {
@@ -54,15 +63,31 @@ public:
     }
 
     T operator*() const {
-        return Consumer.GetCurrent();
+        return Consumer->GetCurrent();
+    }
+
+    struct ProxyHolder {
+    private:
+        T Value;
+    public:
+        ProxyHolder(T&& value)
+            : Value(std::move(value))
+        {}
+
+        const T* operator->() const {
+            return &Value;
+        }
+    };
+
+    ProxyHolder operator->() const {
+        return ProxyHolder(Consumer->GetCurrent());
     }
 };
 
 template<typename T>
 class ICollection {
 public:
-    virtual IIteratorConsumer<T>& GetConsumer() = 0;
-    virtual const IIteratorConsumer<T>& GetConsumer() const = 0;
+    virtual IIteratorConsumer<T>* GetConsumer() const = 0;
 };
 
 template<typename Container>
@@ -112,18 +137,14 @@ private:
         }
     };
 
-    IteratorConsumer Consumer;
+    mutable IteratorConsumer Consumer;
 public:
     explicit SimpleCollection(const Container& container)
         : Consumer(container)
     {}
 
-    const IIteratorConsumer<T>& GetConsumer() const override {
-        return Consumer;
-    }
-
-    IIteratorConsumer<T>& GetConsumer() override {
-        return Consumer;
+    IIteratorConsumer<T>* GetConsumer() const override {
+        return &Consumer;
     }
 };
 
@@ -137,7 +158,7 @@ private:
     class IteratorConsumer : public IIteratorConsumer<T> {
     private:
         CollectionPtr<T> Parent;
-        IIteratorConsumer<T>& Consumer;
+        IIteratorConsumer<T>* Consumer;
         Pred Predicate;
     public:
         IteratorConsumer(CollectionPtr<T> parent, Pred pred)
@@ -147,64 +168,60 @@ private:
         {}
 
         bool IterateToFirst() override {
-            if (!Consumer.IterateToFirst())
+            if (!Consumer->IterateToFirst())
                 return false;
-            if (Predicate(Consumer.GetCurrent()))
+            if (Predicate(Consumer->GetCurrent()))
                 return true;
 
-            while (Consumer.IterateToNext()) {
-                if (Predicate(Consumer.GetCurrent()))
+            while (Consumer->IterateToNext()) {
+                if (Predicate(Consumer->GetCurrent()))
                     return true;
             }
             return false;
         }
 
         bool IterateToNext() override {
-            while (Consumer.IterateToNext()) {
-                if (Predicate(Consumer.GetCurrent()))
+            while (Consumer->IterateToNext()) {
+                if (Predicate(Consumer->GetCurrent()))
                     return true;
             }
             return false;
         }
 
         bool IterateToLast() override {
-            if (!Consumer.IterateToLast())
+            if (!Consumer->IterateToLast())
                 return false;
-            if (Predicate(Consumer.GetCurrent()))
+            if (Predicate(Consumer->GetCurrent()))
                 return true;
 
-            while (Consumer.IterateToPrev()) {
-                if (Predicate(Consumer.GetCurrent()))
+            while (Consumer->IterateToPrev()) {
+                if (Predicate(Consumer->GetCurrent()))
                     return true;
             }
             return false;
         }
 
         bool IterateToPrev() override {
-            while (Consumer.IterateToPrev()) {
-                if (Predicate(Consumer.GetCurrent()))
+            while (Consumer->IterateToPrev()) {
+                if (Predicate(Consumer->GetCurrent()))
                     return true;
             }
             return false;
         }
 
         T GetCurrent() const override {
-            return Consumer.GetCurrent();
+            return Consumer->GetCurrent();
         }
     };
 
-    IteratorConsumer Consumer;
+    mutable IteratorConsumer Consumer;
 public:
     FilteredCollection(CollectionPtr<T> parent, Pred pred)
         : Consumer(parent, pred)
     {}
 
-    const IIteratorConsumer<T>& GetConsumer() const override {
-        return Consumer;
-    }
-
-    IIteratorConsumer<T>& GetConsumer() override {
-        return Consumer;
+    IIteratorConsumer<T>* GetConsumer() const override {
+        return &Consumer;
     }
 };
 
@@ -214,7 +231,7 @@ private:
     class IteratorConsumer : public IIteratorConsumer<T> {
     private:
         CollectionPtr<T> Parent;
-        IIteratorConsumer<T>& Consumer;
+        IIteratorConsumer<T>* Consumer;
     public:
         explicit IteratorConsumer(CollectionPtr<T> parent)
             : Parent(parent)
@@ -222,38 +239,34 @@ private:
         {}
 
         bool IterateToFirst() override {
-            return Consumer.IterateToLast();
+            return Consumer->IterateToLast();
         }
 
         bool IterateToNext() override {
-            return Consumer.IterateToPrev();
+            return Consumer->IterateToPrev();
         }
 
         bool IterateToLast() override {
-            return Consumer.IterateToFirst();
+            return Consumer->IterateToFirst();
         }
 
         bool IterateToPrev() override {
-            return Consumer.IterateToNext();
+            return Consumer->IterateToNext();
         }
 
         T GetCurrent() const override {
-            return Consumer.GetCurrent();
+            return Consumer->GetCurrent();
         }
     };
 
-    IteratorConsumer Consumer;
+    mutable IteratorConsumer Consumer;
 public:
     ReversedCollection(CollectionPtr<T> parent)
         : Consumer(parent)
     {}
 
-    const IIteratorConsumer<T>& GetConsumer() const override {
-        return Consumer;
-    }
-
-    IIteratorConsumer<T>& GetConsumer() override {
-        return Consumer;
+    IIteratorConsumer<T>* GetConsumer() const override {
+        return &Consumer;
     }
 };
 

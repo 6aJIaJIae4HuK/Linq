@@ -2,15 +2,15 @@
 #include <vector>
 #include <iostream>
 #include <list>
+#include <string>
 
 int main() {
-    std::vector<int> v { 2, 3, 4, 5, 6 };
+    std::vector<std::string> v{ "2", "22", "222" };
     const auto& list = AsCollection(v)
-        .Filter([](int i) { return i % 2 == 0; })
-        .Reverse()
-        .To<std::list<int>>();
-    for (int i : list) {
-        std::cout << i << ' ';
-    }
+        .Filter([](auto i) { return true; })
+        .Reverse();
+    auto it = list.begin();
+    it++;
+    std::cout << it->length() << std::endl;
     return 0;
 }

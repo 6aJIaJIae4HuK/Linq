@@ -1,4 +1,5 @@
 Trying to create analog for C# Linq.
+Now iterators fully satisfies [InputIterator](https://en.cppreference.com/w/cpp/named_req/InputIterator)
 
 1. What works now:
    - Filtering
