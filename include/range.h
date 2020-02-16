@@ -51,7 +51,7 @@ private:
 		bool IterateToLast() override {
 			if (Start == Finish)
 				return false;
-			Cur = Start + (Finish - Start) / Step;
+			Cur = Start + (Finish - Start) / Step * Step;
 			if (Cur == Finish) {
 				Cur -= Step;
 			}
