@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <iterator>
+#include <type_traits>
 
 template<typename T>
 class IIteratorConsumer {
@@ -124,6 +125,13 @@ public:
 template<typename Container>
 Collection<typename Container::value_type> AsCollection(const Container& container);
 
+template<typename T, class = typename std::enable_if_t<std::is_integral_v<T>>>
+Collection<T> Range(T start, T finish, T step = 1);
+
+template<typename T, class = typename std::enable_if_t<std::is_integral_v<T>>>
+Collection<T> Range(T finish);
+
 #include "filter.h"
 #include "reverse.h"
 #include "from_container.h"
+#include "range.h"

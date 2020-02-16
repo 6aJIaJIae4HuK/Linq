@@ -5,12 +5,12 @@ Now iterators fully satisfies [InputIterator](https://en.cppreference.com/w/cpp/
    - Filtering
    - Converting to any container with constructor *(begin(), end())*
    - Reversing
+   - Creating range for consecutive integral values
 
 2. What will work (hopefully) in future:
    - Converting items
    - Ordering by labmda (asc, desc)
    - Grouping
-   - Creating range for consecutive integral values
    - Consuming part of elements
 
 3. What to think about:

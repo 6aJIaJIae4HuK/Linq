@@ -12,5 +12,9 @@ int main() {
     auto it = list.begin();
     it++;
     std::cout << it->length() << std::endl;
+    for (auto i : Range(static_cast<size_t>(5)).Reverse()) {
+        std::cout << i << ' ';
+    }
+    std::cout << std::endl;
     return 0;
 }
