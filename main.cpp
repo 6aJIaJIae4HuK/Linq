@@ -12,7 +12,8 @@ int main() {
     auto it = list.begin();
     it++;
     std::cout << it->length() << std::endl;
-    for (auto i : Range(-4, 11, 3)) {
+    std::vector<int> nums = Range(-4, 11, 3);
+    for (auto i : nums) {
         std::cout << i << ' ';
     }
     std::cout << std::endl;

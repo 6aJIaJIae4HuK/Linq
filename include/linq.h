@@ -117,7 +117,7 @@ public:
     Collection<T> Reverse() const;
 
     template<typename OutContainer>
-    OutContainer To() const {
+    operator OutContainer() const {
         return OutContainer(begin(), end());
     }
 };
