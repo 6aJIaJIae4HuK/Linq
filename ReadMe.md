@@ -20,5 +20,6 @@ Now iterators fully satisfies [InputIterator](https://en.cppreference.com/w/cpp/
    - Leave it just input iterable?
    - rbegin/rend?
    - Optimizations of something like Reverse -> Reverse or Where -> Where or smth like that
-   - How to avoid extra copies?
+   - How to simplify move/assign to reference operations
+   - SFINAE to interface???? (maybe there will be trait IsRandomAccessible for Skip/Take operations)
    - Why am I doing this?..

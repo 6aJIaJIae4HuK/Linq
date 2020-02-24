@@ -5,9 +5,9 @@
 #include <functional>
 
 template<typename T, class = typename std::enable_if_t<std::is_integral_v<T>>>
-class RangeCollection : public ICollection<T> {
+class RangeCollection : public ICollection<T, false> {
 private:
-	class IteratorConsumer : public IIteratorConsumer<T> {
+	class IteratorConsumer : public IIteratorConsumer<T, false> {
 	private:
 		using CheckerType = std::function<bool(const T&, const T&)>;
 		T Start;
@@ -16,11 +16,11 @@ private:
 		T Cur;
 		CheckerType Checker;
 
-		static inline auto ForAscending = [](const T& finish, const T& cur) {
+		static constexpr auto ForAscending = [](const T& finish, const T& cur) {
 			return cur < finish;
 		};
 
-		static inline auto ForDescending = [](const T& finish, const T& cur) {
+		static constexpr auto ForDescending = [](const T& finish, const T& cur) {
 			return finish < cur;
 		};
 
@@ -75,17 +75,17 @@ public:
 		: Consumer(start, finish, step)
 	{}
 
-	IIteratorConsumer<T>* GetConsumer() const override {
+	IIteratorConsumer<T, false>* GetConsumer() const override {
 		return &Consumer;
 	}
 };
 
-template<typename T, class>
-inline Collection<T> Range(T start, T finish, T step) {
-	return Collection<T>(std::make_shared<RangeCollection<T>>(start, finish, step));
+template<typename T, typename>
+inline Collection<T, false> Range(T start, T finish, T step) {
+	return Collection<T, false>(std::make_shared<RangeCollection<T>>(start, finish, step));
 }
 
-template<typename T, class>
-inline Collection<T> Range(T finish) {
+template<typename T, typename>
+inline Collection<T, false> Range(T finish) {
 	return Range(T{}, finish);
 }

@@ -2,15 +2,15 @@
 
 #include "linq.h"
 
-template<typename T>
-class ReversedCollection : public ICollection<T> {
+template<typename T, bool IsConstView>
+class ReversedCollection : public ICollection<T, IsConstView> {
 private:
-    class IteratorConsumer : public IIteratorConsumer<T> {
+    class IteratorConsumer : public IIteratorConsumer<T, IsConstView> {
     private:
-        CollectionPtr<T> Parent;
-        IIteratorConsumer<T>* Consumer;
+        CollectionPtr<T, IsConstView> Parent;
+        IIteratorConsumer<T, IsConstView>* Consumer;
     public:
-        explicit IteratorConsumer(CollectionPtr<T> parent)
+        explicit IteratorConsumer(CollectionPtr<T, IsConstView> parent)
             : Parent(parent)
             , Consumer(Parent->GetConsumer())
         {}
@@ -31,23 +31,23 @@ private:
             return Consumer->IterateToNext();
         }
 
-        T GetCurrent() const override {
+        ItemType<T, IsConstView> GetCurrent() const override {
             return Consumer->GetCurrent();
         }
     };
 
     mutable IteratorConsumer Consumer;
 public:
-    ReversedCollection(CollectionPtr<T> parent)
+    ReversedCollection(CollectionPtr<T, IsConstView> parent)
         : Consumer(parent)
     {}
 
-    IIteratorConsumer<T>* GetConsumer() const override {
+    IIteratorConsumer<T, IsConstView>* GetConsumer() const override {
         return &Consumer;
     }
 };
 
-template<typename T>
-inline Collection<T> Collection<T>::Reverse() const {
-    return Collection<T>(std::make_shared<ReversedCollection<T>>(Data));
+template<typename T, bool IsConstView>
+inline Collection<T, IsConstView> Collection<T, IsConstView>::Reverse() const {
+    return Collection<T, IsConstView>(std::make_shared<ReversedCollection<T, IsConstView>>(Data));
 }
