@@ -1,58 +1,75 @@
 #include "include/linq.h"
+
 #include <vector>
+#include <forward_list>
+#include <type_traits>
 #include <iostream>
-#include <list>
-#include <string>
+#include <memory>
+#include <set>
+#include <functional>
+#include <optional>
 
-class NonCopyable {
+class S {
 private:
-    std::unique_ptr<int> Value;
+	std::unique_ptr<int> Value;
 public:
-    explicit NonCopyable(int value)
-        : Value(std::make_unique<int>(value))
-    {}
+	S(int i)
+		: Value(std::make_unique<int>(i))
+	{}
 
-    int GetValue() const {
-        return *Value;
-    }
+	S(const S&) = default;
+	S& operator=(const S&) = default;
+
+	S(S&& other) noexcept
+		: Value(std::move(other.Value))
+	{
+		std::cout << "S(S&&)" << std::endl;
+	}
+
+	S& operator=(S&& other) noexcept {
+		Value = std::move(other.Value);
+		std::cout << "operator=(S&&)" << std::endl;
+		return *this;
+	}
+
+	bool operator<(const S& other) const {
+		return GetValue() < other.GetValue();
+	}
+
+	int GetValue() const {
+		return *Value;
+	}
 };
 
-void Sample1() {
-    std::vector<std::string> v{ "2", "22", "222" };
-    const auto& list = AsView(v)
-        .Filter([](auto i) { return true; })
-        .Reverse();
-    auto it = list.begin();
-    it++;
-    std::cout << it->length() << std::endl;
-    std::vector<int> nums = Range(-4, 11, 3);
-    for (auto i : nums) {
-        std::cout << i << ' ';
-    }
-    std::cout << std::endl;
-}
-
-void Sample2() {
-    auto generate = []() {
-        std::vector<NonCopyable> res;
-        for (int i = 0; i < 5; i++) {
-            res.emplace_back(i);
-        }
-        return res;
-    };
-
-    auto& list = 
-        AsView(generate())
-        .Filter([](const NonCopyable& nc) { return nc.GetValue() % 2 == 0; });
-        
-    for (auto&& nc : list) {
-        std::cout << nc.GetValue() << ' ';
-    }
-    std::cout << std::endl;
-}
-
 int main() {
-    Sample1();
-    Sample2();
-    return 0;
+	auto generate = []() {
+		std::forward_list<S> res;
+		for (int i = 2; i <= 5; ++i) {
+			res.emplace_front(i);
+		}
+		return res;
+	};
+	auto v = generate();
+	auto col = FromContainer(generate());
+	auto reversed = col.Reverse();
+	auto filtered = reversed.Filter([](const S& s) { return s.GetValue() % 3 != 0; });
+
+	std::cout << "Original: ";
+	for (const auto& s : col) {
+		std::cout << s.GetValue() << ' ';
+	}
+	std::cout << "Size: " << col.size() << std::endl;
+
+	std::cout << "Reversed: ";
+	for (const auto& s : reversed) {
+		std::cout << s.GetValue() << ' ';
+	}
+	std::cout << "Size: " << reversed.size() << std::endl;
+
+	std::cout << "Filtered: ";
+	for (const auto& s : filtered) {
+		std::cout << s.GetValue() << ' ';
+	}
+	std::cout << "Size: " << filtered.size() << std::endl;
+	return 0;
 }

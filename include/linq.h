@@ -1,164 +1,79 @@
 ﻿#pragma once
 
+#include "views/views.h"
+
 #include <memory>
-#include <iterator>
-#include <type_traits>
 
-template<typename T, bool IsConstView>
-using ItemType = std::conditional_t<IsConstView, const std::remove_cv_t<T>&, std::remove_cv_t<T>>;
-
-template<typename T, bool IsConstView>
-ItemType<T, IsConstView> PassItem(ItemType<T, IsConstView> item) {
-    if constexpr (IsConstView) {
-        return item;
-    } else {
-        return std::move(item);
-    }
-}
-
-template<typename T, bool IsConstView>
-class IIteratorConsumer {
-public:
-    virtual bool IterateToFirst() = 0;
-    virtual bool IterateToNext() = 0;
-    virtual bool IterateToLast() = 0;
-    virtual bool IterateToPrev() = 0;
-    virtual ItemType<T, IsConstView> GetCurrent() const = 0;
-};
-
-template<typename T, bool IsConstView>
-class ICollection {
-public:
-    virtual IIteratorConsumer<T, IsConstView>* GetConsumer() const = 0;
-};
-
-template<typename T, bool IsConstView>
-class Iterator {
-private:
-    IIteratorConsumer<T, IsConstView>* Consumer;
-    bool CanConsume = true;
-public:
-    using iterator_category = std::input_iterator_tag;
-    using value_type = T;
-    using pointer = const T*;
-    using reference = const T&;
-    using difference_type = std::ptrdiff_t;
-
-    explicit Iterator(IIteratorConsumer<T, IsConstView>* consumer)
-        : Consumer(consumer)
-    {
-        if (!Consumer->IterateToFirst()) {
-            CanConsume = false;
-        }
-    }
-
-    Iterator(IIteratorConsumer<T, IsConstView>* consumer, int)
-        : Consumer(consumer)
-        , CanConsume(false)
-    {}
-
-    Iterator(const Iterator&) = default;
-    Iterator& operator=(const Iterator&) = default;
-
-    Iterator& operator++() {
-        if (!Consumer->IterateToNext()) {
-            CanConsume = false;
-        }
-        return *this;
-    }
-
-    Iterator operator++(int) {
-        auto res = *this;
-        operator++();
-        return res;
-    }
-
-    bool operator==(const Iterator& other) const {
-        return Consumer == other.Consumer && CanConsume == other.CanConsume;
-    }
-
-    bool operator!=(const Iterator& other) const {
-        return !(*this == other);
-    }
-
-    ItemType<T, IsConstView> operator*() const {
-        return Consumer->GetCurrent();
-    }
-
-    template<typename = std::enable_if_t<!IsConstView>>
-    struct ProxyHolder {
-    private:
-        T Value;
-    public:
-        ProxyHolder(T&& value)
-            : Value(std::move(value))
-        {}
-
-        const T* operator->() const {
-            return &Value;
-        }
-    };
-
-    template<typename = std::enable_if_t<!IsConstView>>
-    ProxyHolder<typename> operator->() const {
-        return ProxyHolder<typename>(Consumer->GetCurrent());
-    }
-
-    template<typename = std::enable_if_t<IsConstView>>
-    const T* operator->() const {
-        return &(Consumer->GetCurrent());
-    }
-};
-
-template<typename T, bool IsConstView>
-using CollectionPtr = std::shared_ptr<ICollection<T, IsConstView>>;
-
-template<typename T, bool IsConstView>
+template<typename View>
 class Collection {
 private:
-    CollectionPtr<T, IsConstView> Data;
-
+	std::shared_ptr<View> V;
 public:
-    explicit Collection(CollectionPtr<T, IsConstView> data)
-        : Data(data)
-    {}
-    Iterator<T, IsConstView> begin() const {
-        return Iterator<T, IsConstView>(Data->GetConsumer());
-    }
+	explicit Collection(std::shared_ptr<View> v)
+		: V(v)
+	{}
 
-    Iterator<T, IsConstView> end() const {
-        return Iterator<T, IsConstView>(Data->GetConsumer(), {});
-    }
+	auto Reverse() const & {
+		auto view = std::make_shared<ReversedView<View>>(V);
+		return Collection<ReversedView<View>>(view);
+	}
 
-    template<typename Pred>
-    Collection<T, IsConstView> Filter(Pred pred) const;
+	auto Reverse() && {
+		auto view = std::make_shared<ReversedView<View>>(std::move(V));
+		return Collection<ReversedView<View>>(view);
+	}
 
-    Collection<T, IsConstView> Reverse() const;
+	template<typename Predicate>
+	auto Filter(Predicate pred) const& {
+		auto view = std::make_shared<FilteredView<View, Predicate>>(V, pred);
+		return Collection<FilteredView<View, Predicate>>(view);
+	}
 
-    template<typename OutContainer>
-    OutContainer To() const {
-        return OutContainer(begin(), end());
-    }
+	template<typename Predicate>
+	auto Filter(Predicate pred) && {
+		auto view = std::make_shared<FilteredView<View, Predicate>>(std::move(V), pred);
+		return Collection<FilteredView<View, Predicate>>(view);
+	}
 
-    template<typename OutContainer>
-    operator OutContainer() const {
-        return To<OutContainer>();
-    }
+	auto begin() const {
+		return V->begin();
+	}
+
+	auto end() const {
+		return V->end();
+	}
+
+	auto rbegin() const {
+		return V->rbegin();
+	}
+
+	auto rend() const {
+		return V->rend();
+	}
+
+	size_t size() const {
+		return std::distance(begin(), end());
+	}
+
+	template<typename Container>
+	Container CopyTo() const {
+		return { begin(), end() };
+	}
+
+	template<typename Container>
+	operator Container() const {
+		return CopyTo<Container>();
+	}
 };
 
 template<typename Container>
-Collection<std::remove_cv_t<typename Container::value_type>, true> AsView(const Container& container);
+auto FromContainer(Container& container) {
+	auto view = std::make_shared<FromContainerView<const Container&>>(container);
+	return Collection<const FromContainerView<const Container&>>(view);
+}
 
 template<typename Container>
-Collection<std::remove_cv_t<typename Container::value_type>, false> AsView(Container&& container);
-
-template<typename T, typename = typename std::enable_if_t<std::is_integral_v<T>>>
-Collection<T, false> Range(T start, T finish, T step = 1);
-
-template<typename T, typename = typename std::enable_if_t<std::is_integral_v<T>>>
-Collection<T, false> Range(T finish);
-
-#include "filter.h"
-#include "reverse.h"
-#include "from_container.h"
-#include "range.h"
+auto FromContainer(Container&& container) {
+	auto view = std::make_shared<FromContainerView<Container>>(std::move(container));
+	return Collection<FromContainerView<Container>>(view);
+}
