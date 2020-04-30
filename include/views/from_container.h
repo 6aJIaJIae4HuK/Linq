@@ -7,6 +7,7 @@ DEFINE_HAS_METHOD(begin, Begin);
 DEFINE_HAS_METHOD(end, End);
 DEFINE_HAS_METHOD(rbegin, Rbegin);
 DEFINE_HAS_METHOD(rend, Rend);
+DEFINE_HAS_METHOD(size, Size);
 
 template<typename Container>
 inline constexpr bool IsForwardIterable = HasMethodBegin<Container> && HasMethodEnd<Container>;
@@ -15,12 +16,16 @@ template<typename Container>
 inline constexpr bool IsBackwardIterable = HasMethodRbegin<Container> && HasMethodRend<Container>;
 
 template<typename Container>
+inline constexpr bool IsSizeable = HasMethodSize<Container>;
+
+template<typename Container>
 class FromContainerView {
 public:
 	using ValueType = typename std::remove_reference_t<Container>::value_type;
 	static_assert(IsForwardIterable<Container>);
 private:
 	static constexpr bool IsBackwardIterable = IsBackwardIterable<Container>;
+	static constexpr bool IsSizeable = IsSizeable<Container>;
 	Container Cont;
 public:
 	explicit FromContainerView(Container&& container)
@@ -30,8 +35,7 @@ public:
 	auto begin() const {
 		if constexpr (IsBackwardIterable) {
 			return Cont.begin();
-		}
-		else {
+		} else {
 			return BidirectionalFromInput(Cont.begin(), Cont.begin());
 		}
 	}
@@ -39,8 +43,7 @@ public:
 	auto end() const {
 		if constexpr (IsBackwardIterable) {
 			return Cont.end();
-		}
-		else {
+		} else {
 			return BidirectionalFromInput(Cont.begin(), Cont.end());
 		}
 	}
@@ -48,8 +51,7 @@ public:
 	auto rbegin() const {
 		if constexpr (IsBackwardIterable) {
 			return Cont.rbegin();
-		}
-		else {
+		} else {
 			return std::make_reverse_iterator(end());
 		}
 	}
@@ -57,9 +59,16 @@ public:
 	auto rend() const {
 		if constexpr (IsBackwardIterable) {
 			return Cont.rend();
-		}
-		else {
+		} else {
 			return std::make_reverse_iterator(begin());
+		}
+	}
+
+	auto size() const {
+		if constexpr (IsSizeable) {
+			return Cont.size();
+		} else {
+			return std::distance(begin(), end());
 		}
 	}
 };

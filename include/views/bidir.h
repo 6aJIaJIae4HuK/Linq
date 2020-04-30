@@ -47,7 +47,7 @@ public:
 	}
 
 	bool operator==(const BidirectionalFromInput& other) const {
-		return Begin == other.Begin && It == other.It;
+		return It == other.It;
 	}
 
 	bool operator!=(const BidirectionalFromInput& other) const {

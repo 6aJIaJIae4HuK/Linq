@@ -52,7 +52,7 @@ public:
 	}
 
 	size_t size() const {
-		return std::distance(begin(), end());
+		return V->size();
 	}
 
 	template<typename Container>

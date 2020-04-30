@@ -117,4 +117,8 @@ public:
 	auto rend() const {
 		return std::make_reverse_iterator(begin());
 	}
+
+	size_t size() const {
+		return std::distance(begin(), end());
+	}
 };

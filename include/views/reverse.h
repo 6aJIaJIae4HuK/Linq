@@ -26,4 +26,8 @@ public:
 	auto rend() const {
 		return Parent->end();
 	}
+
+	size_t size() const {
+		return Parent->size();
+	}
 };
