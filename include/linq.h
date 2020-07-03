@@ -77,3 +77,19 @@ auto FromContainer(Container&& container) {
 	auto view = std::make_shared<FromContainerView<Container>>(std::move(container));
 	return Collection<FromContainerView<Container>>(view);
 }
+
+template<typename T>
+auto Range(T begin, T end, T step) {
+	auto view = std::make_shared<RangeView<T>>(begin, end, step);
+	return Collection<RangeView<T>>(view);
+}
+
+template<typename T>
+auto Range(T begin, T end) {
+	return Range(begin, end, static_cast<T>(1));
+}
+
+template<typename T>
+auto Range(T end) {
+	return Range(static_cast<T>(0), end);
+}

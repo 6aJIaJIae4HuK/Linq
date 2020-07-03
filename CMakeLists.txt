@@ -1,0 +1,5 @@
+cmake_minimum_required (VERSION 3.8)
+project ("Linq")
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
+add_executable (Linq "main.cpp")
+set_property (TARGET Linq PROPERTY CXX_STANDARD 17)
