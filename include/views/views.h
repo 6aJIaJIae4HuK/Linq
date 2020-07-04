@@ -4,3 +4,4 @@
 #include "reverse.h"
 #include "filter.h"
 #include "range.h"
+#include "repeat.h"

@@ -71,5 +71,13 @@ int main() {
 		std::cout << s.GetValue() << ' ';
 	}
 	std::cout << "Size: " << filtered.size() << std::endl;
+
+	std::cout << Range(1000000)
+		.Filter([](int i) { return i % 2 == 0; })
+		.size() << std::endl;
+
+	for (auto str : Repeat(std::string{"aaa"}, 20)) {
+		std::cout << str << std::endl;
+	}
 	return 0;
 }

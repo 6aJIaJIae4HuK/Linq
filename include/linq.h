@@ -93,3 +93,9 @@ template<typename T>
 auto Range(T end) {
 	return Range(static_cast<T>(0), end);
 }
+
+template<typename T>
+auto Repeat(T item, size_t size) {
+	auto view = std::make_shared<RepeatView<T>>(std::move(item), size);
+	return Collection<RepeatView<T>>(view);
+}
